@@ -1,0 +1,3 @@
+[submodule "vendor/rbtools"]
+	path = vendor/rbtools
+	url = https://github.com/reviewboard/rbtools
