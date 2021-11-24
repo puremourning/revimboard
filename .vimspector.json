@@ -1,0 +1,16 @@
+{
+    "$schema": "https://puremourning.github.io/vimspector/schema/vimspector.schema.json",
+    "configurations": {
+        "Attach to vim": {
+            "variables": {
+                "port": "5678",
+                "host": "localhost"
+            },
+            "adapter": "multi-session",
+            "configuration": {
+                "request": "attach"
+            }
+        }
+    }
+}
+

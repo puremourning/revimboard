@@ -15,10 +15,18 @@
 # limitations under the License.
 #
 
+import vim
+
 import os
 
 from rbtools.api import client as rbclient
+import rbtools.api.errors as rberrors
 from rbtools import api as rbapi
+
+# TODO: hack/use this to load reviewboardrc
+# import rbtools.utils.filesystem
+
+from revimboard import api_errors, signs
 
 
 class Session( object ):
@@ -35,8 +43,8 @@ class Session( object ):
   client: rbclient.RBClient = None
   root: rbapi.resource.RootResource = None
   review_request: rbapi.resource.ReviewRequestResource = None
-  repository: rbapi.resource.ItemResource = None
   review: rbapi.resource.ItemResource = None
+  diff: rbapi.resource.DiffResource = None
 
   def __init__( self,
                 project_root: str,
@@ -47,46 +55,95 @@ class Session( object ):
     self.client = rbclient.RBClient( server, *args, **kwargs )
     self.root = self.client.get_root()
 
+    if not signs.SignDefined( 'ReVimPendingComment' ):
+      signs.DefineSign( 'ReVimPendingComment',
+                        text = 'c',
+                        double_text = 'c',
+                        texthl = 'SpellRare' )
+
   # Must haves:
   #  - rely on .reviewboardrc, making connection options optional
+  #  - proper API error handling; it' snot really ok to let the exceptions
+  #    bubble as they do now
   #  - get comment text from a drawer-like buffer rather than cmdline
   #  - toggle for issue/not issue, markdown/plain etc.
-  #  - overall review comments (or just say use browser) ?
+  #  - view overall review comments (or just say use browser) ?
+  #  - load open diff comments from all reviews and add them as signs with
+  #    "virtual text" (popup)
+  #  - do some operations async because the reviewboard server is _ridiculously_
+  #    slow
   #
   # Ideas:
   #  - open the review in browser for final submit ?
   #  - automatically apply rbt patch by matching some file in the project ? hmm
   #      not sure about that
-  #  - load open diff comments from all reviews and add them as signs with
-  #    "virtual text" (popup)
   #  - allow replying to comments
 
-  def SetCurrentDiff( self,
-                      review_request_id: int,
-                      diff_revision: int ):
+  def SetCurrentDiff( self, review_request_id: int, diff_revision: int ):
     self.review_request = self.root.get_review_request(
       review_request_id = review_request_id )
-    self.repository = self.review_request.get_repository()
     self.diff = self.root.get_diff( review_request_id = review_request_id,
                                     diff_revision = diff_revision )
 
+    self._LoadDraftReview()
 
-  def AddComment( self,
-                  filepath: str,
-                  line1: int,
-                  line2: int,
-                  comment: str ):
+
+  def AddComment( self, buffer: vim.Buffer, line1: int, line2: int, **kwargs ):
     self._StartReviewIfNeeded()
 
+
+    # TODO(Ben) : Temp - we probably want something per-buffer like
+    # b:revimboard_file_diff_id
+    filepath = buffer.name
     file_diff = self._FindFileDiff( filepath )
+    if not file_diff:
+      raise RuntimeError(
+        f"Could not file a diff for { filepath } in "
+        f"Review { self.review.id } diff revision { self.diff.revision }" )
 
     self.review.get_diff_comments().create(
       filediff_id = file_diff.id,
       first_line = line1,
       num_lines = ( line2 - line1 ) + 1, # include line2 in the comment
-      issue_opened = True,
-      text_type = 'markdown',
-      text = comment )
+      **kwargs )
+
+    return self._UpdatePendingCommentsInBuffer( buffer )
+
+
+  def _LoadDraftReview( self ):
+    try:
+      self.review = self.root.get_review_draft(
+        review_request_id = self.review_request.id )
+
+      # if self.review.public:
+      #   # it's not a draft ?!
+      #   self.review = None
+
+      for buffer in vim.buffers:
+        self._UpdatePendingCommentsInBuffer( buffer )
+    except rberrors.APIError as e:
+      if e.error_code != api_errors.DOES_NOT_EXIST:
+        raise
+
+
+  def _UpdatePendingCommentsInBuffer( self, buffer ):
+    file_diff = self._FindFileDiff( buffer.name )
+    if not file_diff:
+      return
+
+    signs.UnplaceSigns( filepath=buffer.name, group='ReVimReview' )
+
+    for diff_comment in self.review.get_diff_comments():
+      if diff_comment.get_filediff().id == file_diff.id:
+        signs.PlaceSign( diff_comment.id,
+                         'ReVimReview',
+                         'ReVimPendingComment',
+                         buffer.name,
+                         diff_comment.first_line )
+
+        # TODO(Ben): Place a text property
+        # TODO(Ben): Attach a popup to the text property
+
 
 
   def _StartReviewIfNeeded( self ):
@@ -151,10 +208,6 @@ class Session( object ):
            or len( candidate_path ) < shortest_matched_len ):
         shortest_matched_len = len( candidate_path )
         shortest_matched_candidate = file_diff
-
-    if shortest_matched_candidate is None:
-      raise RuntimeError( f"Could not file a diff for { filepath } in "
-                          "files: { self.diff.get_files() }" )
 
     return shortest_matched_candidate
 

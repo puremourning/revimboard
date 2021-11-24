@@ -35,10 +35,16 @@ endif
 let g:loaded_revimbaord = 1
 let g:revimboard_home = expand( '<sfile>:p:h:h' )
 
-command! ReVimConnect
-      \ call revimboard#Connect()
-command! -range -nargs=1 ReVimAddComment
-      \ call revimboard#AddComment( <line1>, <line2>, <f-args> )
+nnoremap <silent> <Plug>(ReVimBoardAddComment)
+      \ :call revimboard#AddComment()<CR>
+xnoremap <silent> <Plug>(ReVimBoardAddComment)
+      \ :call revimboard#AddComment()<CR>
+
+command! -nargs=* -bar ReVimConnect
+      \ call revimboard#Connect( <f-args> )
+command! -range -nargs=? ReVimAddComment
+      \ <line1>,<line2>call revimboard#AddComment( <f-args> )
+
 
 " Boilerplate {{{
 let &cpoptions = s:cpoptions

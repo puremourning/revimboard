@@ -37,23 +37,61 @@ function s:CheckSession()
   call s:Init()
 
   if py3eval( 'not revimboard_session' )
+    echohl WarningMsg
     echom "Need to call revimboard#Connect() first"
-    return
+    echohl None
+    return v:false
   endif
+
+  return v:true
 endfunction
 
-function revimboard#Connect()
+function revimboard#Connect( ... )
   call s:Init()
 
   call inputsave()
 
 
-  let project_root = input( "Project Root: ", getcwd(), "dir" )
-  let server = input( "Server address: " )
-  let username = input( "Username: " )
-  let password = inputsecret( "Password:" )
-  let review_req_id = input( "Review ID: " )
-  let diff_revision = input( "Diff revision: ", "1" )
+  if a:0 > 0
+    if a:1 == '.'
+      let project_root = getcwd()
+    else
+      let project_root = expand( a:1 )
+    endif
+  else
+    let project_root = input( "Project Root: ", getcwd(), "dir" )
+  endif
+
+  if a:0 > 1
+    let server = a:2
+  else
+    let server = input( "Server address: " )
+  endif
+
+  if a:0 > 2
+    let username = a:3
+  else
+    let username = input( "Username: " )
+  endif
+
+  if a:0 > 3 && a:4 != "*"
+    let password = a:4
+  else
+    let password = inputsecret( "Password: " )
+  endif
+
+  if a:0 > 4
+    let review_req_id = a:5
+  else
+    let review_req_id = input( "Review ID: " )
+  endif
+
+  " TODO: get latest revision for review_req_id and make default
+  if a:0 > 5
+    let diff_revision = a:6
+  else
+    let diff_revision = input( "Diff revision: ", "1" )
+  endif
 
   call inputrestore()
 
@@ -89,34 +127,62 @@ function! revimboard#SetCurrentDiff(
   EOF
 endfunction
 
-function! revimboard#AddCommentFromSelection()
-  call s:CheckSession()
+function! revimboard#AddComment( ... ) range
+  if !s:CheckSession()
+    return
+  endif
+
+  if a:firstline < 1
+    let firstline = line( '.' )
+    let lastline = line( '.' )
+  else
+    let firstline = a:firstline
+    let lastline = a:lastline
+  endif
+
+  if a:0 == 0
+    call inputsave()
+    " TODO: Switch to some UI/buffer that can accept the input, e.g.
+    " Split a new buffer and make it current
+    " have some BufClose ? event
+    " have some mapping <ctrl-enter> ?
+    " hmmmm
+    let args = {
+          \ 'text': input( "Comment: " ),
+          \ 'issue_opened': input( "Raise Issue Y/N? ", "Y" ) == "Y",
+          \ 'text_type': ( input( "Markdown? ", "Y" ) == "Y" )
+          \              ? "markdown" 
+          \              : "plain",
+          \ }
+    call inputrestore()
+  elseif type( a:1 ) == v:t_string
+    let args = {
+          \ 'text': a:1
+          \ }
+  elseif type( a:1 ) == v:t_dict
+    let args = a:1
+  endif
 
   py3 << trim EOF
-    line1, _ = vim.current.buffer.mark( '<' )
-    line2, _ = vim.current.buffer.mark( '>' )
-
-    import vimspector.utils
-    comment = vimspector.utils.AskForInput( "Comment: " )
-
-    if comment is not None:
-      revimboard_session.AddComment( vim.current.buffer.name,
-                                     line1,
-                                     line2,
-                                     comment )
+    revimboard_session.AddComment( vim.current.buffer,
+                                   int( vim.eval( 'firstline' ) ),
+                                   int( vim.eval( 'lastline' ) ),
+                                   **vim.eval( 'args' ) )
   EOF
 endfunction
 
-function! revimboard#AddComment( line1, line2, comment )
-  call s:CheckSession()
-
-  py3 << trim EOF
-    revimboard_session.AddComment( vim.current.buffer.name,
-                                   int( vim.eval( 'a:line1' ) ),
-                                   int( vim.eval( 'a:line2' ) ),
-                                   vim.eval( 'a:comment' ) )
-  EOF
-endfunction
+" TODO
+" function! revimboard#DeleteComment( ... )
+"   if !s:CheckSession()
+"     return
+"   endif
+" 
+"   py3 << trim EOF
+"     revimboard_session.DeleteComment( vim.current.buffer,
+"                                       vim.current.buffer.cursor[ 0 ] )
+"   EOF
+" 
+" endfunction
 
 let &cpoptions = s:cpoptions
 
