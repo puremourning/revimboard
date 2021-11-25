@@ -171,18 +171,30 @@ function! revimboard#AddComment( ... ) range
   EOF
 endfunction
 
-" TODO
-" function! revimboard#DeleteComment( ... )
-"   if !s:CheckSession()
-"     return
-"   endif
-" 
-"   py3 << trim EOF
-"     revimboard_session.DeleteComment( vim.current.buffer,
-"                                       vim.current.buffer.cursor[ 0 ] )
-"   EOF
-" 
-" endfunction
+function! revimboard#DeleteComment( ... )
+  if !s:CheckSession()
+    return
+  endif
+
+  py3 << trim EOF
+    revimboard_session.DeleteComment( vim.current.buffer,
+                                      vim.current.window.cursor[ 0 ] )
+  EOF
+
+endfunction
+
+
+function! revimboard#ShowComment()
+  if !s:CheckSession()
+    return
+  endif
+
+  py3 << trim EOF
+    revimboard_session.ShowComment( vim.current.buffer,
+                                    vim.current.window.cursor[ 0 ] )
+  EOF
+
+endfunction
 
 let &cpoptions = s:cpoptions
 

@@ -36,9 +36,15 @@ let g:loaded_revimbaord = 1
 let g:revimboard_home = expand( '<sfile>:p:h:h' )
 
 nnoremap <silent> <Plug>(ReVimBoardAddComment)
-      \ :call revimboard#AddComment()<CR>
+      \ <cmd>call revimboard#AddComment()<CR>
 xnoremap <silent> <Plug>(ReVimBoardAddComment)
-      \ :call revimboard#AddComment()<CR>
+      \ <cmd>call revimboard#AddComment()<CR>
+
+nnoremap <silent> <Plug>(ReVimBoardDeleteComment)
+      \ <cmd>call revimboard#DeleteComment()<CR>
+
+nnoremap <silent> <Plug>(ReVimBoardShowComment)
+      \ <cmd>call revimboard#ShowComment()<CR>
 
 command! -nargs=* -bar ReVimConnect
       \ call revimboard#Connect( <f-args> )

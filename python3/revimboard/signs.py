@@ -71,5 +71,12 @@ def UnplaceSigns( group, filepath ):
   utils.Call( 'sign_unplace', group, { 'buffer': filepath } )
 
 
+def GetPlaced( filepath, group, line ):
+  return utils.Call( 'sign_getplaced', filepath, {
+    'group': group,
+    'lnum': line
+  } )[ 0 ][ 'signs' ]
+
+
 
 # vim: sw=2

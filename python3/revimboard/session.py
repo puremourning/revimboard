@@ -26,7 +26,7 @@ from rbtools import api as rbapi
 # TODO: hack/use this to load reviewboardrc
 # import rbtools.utils.filesystem
 
-from revimboard import api_errors, signs
+from revimboard import api_errors, popup, signs
 
 
 class Session( object ):
@@ -70,8 +70,9 @@ class Session( object ):
   #  - view overall review comments (or just say use browser) ?
   #  - load open diff comments from all reviews and add them as signs with
   #    "virtual text" (popup)
+  #
   #  - do some operations async because the reviewboard server is _ridiculously_
-  #    slow
+  #    slow, but how, poll timer :(?
   #
   # Ideas:
   #  - open the review in browser for final submit ?
@@ -108,6 +109,34 @@ class Session( object ):
       **kwargs )
 
     return self._UpdatePendingCommentsInBuffer( buffer )
+
+
+  def _AllCommentsOnLine( self, buffer: vim.Buffer, line: int ):
+    # find the diff comment at that line
+    line_signs = signs.GetPlaced( filepath = buffer.name,
+                                  group = 'ReVimReview',
+                                  line = line )
+
+    comments = self.review.get_diff_comments( line = line )
+
+    for sign in line_signs:
+      for comment in comments:
+        if comment.id == int( sign[ 'id' ] ):
+          yield comment
+
+
+  def DeleteComment( self, buffer: vim.Buffer, line: int ):
+    for comment in self._AllCommentsOnLine( buffer, line ):
+      comment.delete()
+
+    self._UpdatePendingCommentsInBuffer( buffer )
+
+
+  def ShowComment( self, buffer: vim.Buffer, line: int ):
+    for comment in self._AllCommentsOnLine( buffer, line ):
+      popup.AtFirstColumn( line, comment.text )
+      # TODO(Ben): What to do if we have multiple comments on this line
+      return
 
 
   def _LoadDraftReview( self ):
