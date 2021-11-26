@@ -26,7 +26,9 @@ from rbtools import api as rbapi
 # TODO: hack/use this to load reviewboardrc
 # import rbtools.utils.filesystem
 
-from revimboard import api_errors, popup, signs
+import vimspector.utils
+
+from revimboard import api_errors, editor, popup, signs
 
 
 class Session( object ):
@@ -92,23 +94,57 @@ class Session( object ):
   def AddComment( self, buffer: vim.Buffer, line1: int, line2: int, **kwargs ):
     self._StartReviewIfNeeded()
 
+    def PutComment( text, **kwargs ):
+      # TODO(Ben) : Temp - we probably want something per-buffer like
+      # b:revimboard_file_diff_id
+      filepath = buffer.name
+      file_diff = self._FindFileDiff( filepath )
+      if not file_diff:
+        raise RuntimeError(
+          f"Could not file a diff for { filepath } in "
+          f"Review { self.review.id } diff revision { self.diff.revision }" )
 
-    # TODO(Ben) : Temp - we probably want something per-buffer like
-    # b:revimboard_file_diff_id
-    filepath = buffer.name
-    file_diff = self._FindFileDiff( filepath )
-    if not file_diff:
-      raise RuntimeError(
-        f"Could not file a diff for { filepath } in "
-        f"Review { self.review.id } diff revision { self.diff.revision }" )
+      self.review.get_diff_comments().create(
+        filediff_id = file_diff.id,
+        first_line = line1,
+        num_lines = ( line2 - line1 ) + 1, # include line2 in the comment
+        text = text,
+        **kwargs )
 
-    self.review.get_diff_comments().create(
-      filediff_id = file_diff.id,
-      first_line = line1,
-      num_lines = ( line2 - line1 ) + 1, # include line2 in the comment
-      **kwargs )
+      # TODO(Ben): There seems to be a classic race here, that if we request the
+      # comments we just added, they aren't there! Great work, reviewboard. top
+      # class
+      self._UpdatePendingCommentsInBuffer( buffer )
 
-    return self._UpdatePendingCommentsInBuffer( buffer )
+    text = kwargs.pop( 'text', None )
+
+    if not text:
+      template_text = "<!-- Put the comment here -->"
+
+      def HandleComment( text ):
+        if not text or text == template_text:
+          return
+
+        def handle_choice( choice ):
+          if choice < 0:
+            return
+
+          kwargs.update( {
+            'issue_opened': choice == 1,
+            'text_type': 'markdown'
+          } )
+          PutComment( text, **kwargs )
+
+        vimspector.utils.Confirm( '',
+                                  'Raise issue?',
+                                  handle_choice,
+                                  default_value = 1,
+                                  options = [ '(Y)es', '(N)o' ],
+                                  keys = [ 'y', 'n']  )
+
+      return editor.OpenEditor( template_text, 'markdown', HandleComment )
+
+    return PutComment( text, **kwargs )
 
 
   def _AllCommentsOnLine( self, buffer: vim.Buffer, line: int ):
@@ -144,8 +180,8 @@ class Session( object ):
       self.review = self.root.get_review_draft(
         review_request_id = self.review_request.id )
 
+      # TODO(Ben) if it's not a draft...
       # if self.review.public:
-      #   # it's not a draft ?!
       #   self.review = None
 
       for buffer in vim.buffers:
@@ -171,8 +207,7 @@ class Session( object ):
                          diff_comment.first_line )
 
         # TODO(Ben): Place a text property
-        # TODO(Ben): Attach a popup to the text property
-
+        # TODO(Ben): Attach a popup to the text property?
 
 
   def _StartReviewIfNeeded( self ):

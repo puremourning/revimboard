@@ -35,9 +35,10 @@ endif
 let g:loaded_revimbaord = 1
 let g:revimboard_home = expand( '<sfile>:p:h:h' )
 
+" :help map-table
 nnoremap <silent> <Plug>(ReVimBoardAddComment)
       \ <cmd>call revimboard#AddComment()<CR>
-xnoremap <silent> <Plug>(ReVimBoardAddComment)
+vnoremap <silent> <Plug>(ReVimBoardAddComment)
       \ <cmd>call revimboard#AddComment()<CR>
 
 nnoremap <silent> <Plug>(ReVimBoardDeleteComment)

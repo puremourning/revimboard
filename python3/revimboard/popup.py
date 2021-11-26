@@ -39,6 +39,7 @@ def AtFirstColumn( buffer_line: int, text: str, **kwargs ):
     'close': 'button',
     'drag': True,
     'moved': 'any',
+    # TODO(Ben): &ambiwidth needs to be single else this looks dodge
     'borderchars': [ '─', '│', '─', '│', '╭', '╮', '┛', '╰' ]
   }
   options.update( kwargs )

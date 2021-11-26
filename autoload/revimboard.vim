@@ -141,23 +141,13 @@ function! revimboard#AddComment( ... ) range
   endif
 
   if a:0 == 0
-    call inputsave()
-    " TODO: Switch to some UI/buffer that can accept the input, e.g.
-    " Split a new buffer and make it current
-    " have some BufClose ? event
-    " have some mapping <ctrl-enter> ?
-    " hmmmm
-    let args = {
-          \ 'text': input( "Comment: " ),
-          \ 'issue_opened': input( "Raise Issue Y/N? ", "Y" ) == "Y",
-          \ 'text_type': ( input( "Markdown? ", "Y" ) == "Y" )
-          \              ? "markdown" 
-          \              : "plain",
-          \ }
-    call inputrestore()
+    " AddComment python will handle asking for the input and setting the props
+    let args = {}
   elseif type( a:1 ) == v:t_string
     let args = {
           \ 'text': a:1
+          \ 'issue_opened': v:true,
+          \ 'text_type': 'markdown',
           \ }
   elseif type( a:1 ) == v:t_dict
     let args = a:1
