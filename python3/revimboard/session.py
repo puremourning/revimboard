@@ -170,7 +170,7 @@ class Session( object ):
 
   def ShowComment( self, buffer: vim.Buffer, line: int ):
     for comment in self._AllCommentsOnLine( buffer, line ):
-      popup.AtFirstColumn( line, comment.text )
+      popup.AtFirstColumn( line, comment.text, 'markdown' )
       # TODO(Ben): What to do if we have multiple comments on this line
       return
 

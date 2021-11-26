@@ -29,7 +29,7 @@ def OpenEditor( what, filetype, callback ):
   orig_win_id = vimspector.utils.WindowID( orig_win, orig_win.tabpage )
 
   tmp_bufname = vim.eval( 'tempname()' )
-  vim.command( f"rightbelow 10split { tmp_bufname }" )
+  vim.command( f"leftabove 10split { tmp_bufname }" )
   buf = vim.current.buffer
   buf.options[ 'bufhidden' ] = 'wipe'
   buf.options[ 'buflisted' ] = False

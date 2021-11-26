@@ -20,7 +20,7 @@ import vim
 from vimspector import utils
 
 
-def AtFirstColumn( buffer_line: int, text: str, **kwargs ):
+def AtFirstColumn( buffer_line: int, text: str, syntax: str, **kwargs ):
   # Need to find the screen position of the first text column of the current
   # window
   win_info = utils.Call( 'getwininfo', int( vim.eval( 'win_getid()' )  ) )[ 0 ]
@@ -43,8 +43,8 @@ def AtFirstColumn( buffer_line: int, text: str, **kwargs ):
     'borderchars': [ '─', '│', '─', '│', '╭', '╮', '┛', '╰' ]
   }
   options.update( kwargs )
-  utils.Call( 'popup_create', text.splitlines(), options )
+  win_id = utils.Call( 'popup_create', text.splitlines(), options )
+  utils.Call( 'win_execute', win_id, f'set syntax={ syntax }' )
 
 
 # vim: sw=2
-
