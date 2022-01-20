@@ -173,7 +173,6 @@ function! revimboard#DeleteComment( ... )
 
 endfunction
 
-
 function! revimboard#ShowComment()
   if !s:CheckSession()
     return

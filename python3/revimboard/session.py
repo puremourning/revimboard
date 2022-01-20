@@ -18,6 +18,7 @@
 import vim
 
 import os
+import logging
 
 from rbtools.api import client as rbclient
 import rbtools.api.errors as rberrors
@@ -29,6 +30,22 @@ from rbtools import api as rbapi
 import vimspector.utils
 
 from revimboard import api_errors, editor, popup, signs
+
+LOG_FILE = os.path.expanduser( os.path.join( '~', '.revimboard.log' ) )
+_log_handler = logging.FileHandler( LOG_FILE, mode = 'w' )
+_log_handler.setFormatter(
+    logging.Formatter( '%(asctime)s - %(levelname)s - %(message)s' ) )
+
+
+def SetUpLogging( logger ):
+  logger.setLevel( logging.DEBUG )
+  if _log_handler not in logger.handlers:
+    logger.addHandler( _log_handler )
+
+
+_logger = logging.getLogger( __name__ )
+SetUpLogging( _logger )
+
 
 
 class Session( object ):
@@ -53,6 +70,11 @@ class Session( object ):
                 server: str,
                 *args,
                 **kwargs ):
+
+    # Annoyingly the reviewboard client api uses logging's root logger which
+    # causes mess with YCM? logging.debug() etc.
+    SetUpLogging( logging.root )
+
     self.project_root = os.path.normpath( project_root )
     self.client = rbclient.RBClient( server, *args, **kwargs )
     self.root = self.client.get_root()
@@ -171,18 +193,15 @@ class Session( object ):
   def ShowComment( self, buffer: vim.Buffer, line: int ):
     for comment in self._AllCommentsOnLine( buffer, line ):
       popup.AtFirstColumn( line, comment.text, 'markdown' )
-      # TODO(Ben): What to do if we have multiple comments on this line
       return
+
+    vimspector.utils.UserMessage( "No comment on that line", error=True )
 
 
   def _LoadDraftReview( self ):
     try:
       self.review = self.root.get_review_draft(
         review_request_id = self.review_request.id )
-
-      # TODO(Ben) if it's not a draft...
-      # if self.review.public:
-      #   self.review = None
 
       for buffer in vim.buffers:
         self._UpdatePendingCommentsInBuffer( buffer )
