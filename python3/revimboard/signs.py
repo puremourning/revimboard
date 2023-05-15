@@ -49,7 +49,7 @@ def DefineSign( name, text, double_text, texthl, col = 'right', **kwargs ):
 
 def PlaceSign( sign_id, group, name, file_name, line ):
   # TODO(BenJ): fix priority - use the vimspector setting mechanism ?
-  priority = 200
+  priority = 1000
 
   # TODO(Ben): change to sign_place
   cmd = ( f'sign place { sign_id } '
